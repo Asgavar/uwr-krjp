@@ -89,4 +89,7 @@ if __name__ == '__main__':
     iter_times = list(map(lambda x: str(x), iter_times))
     print(f'{"".rjust(arg_rjust)} | skladana | funkcyjna | iterator')
     for i in range(len(comp_times)):
-        print(f'{str(args[i]).rjust(arg_rjust)} | {comp_times[i].rjust(len("skladana"))} | {func_times[i].rjust(len("funkcyjna"))} | {iter_times[i].rjust(len("iterator"))}')
+        c_str = f'{comp_times[i].rjust(len("skladana"))}'
+        f_str = f'{func_times[i].rjust(len("funkcyjna"))}'
+        i_str = f'{iter_times[i].rjust(len("iterator"))}'
+        print(f'{str(args[i]).rjust(arg_rjust)} | {c_str} | {f_str} | {i_str}')
