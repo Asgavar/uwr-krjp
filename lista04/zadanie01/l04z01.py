@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # w tym przypadku implementacja ArgParsera bylaby chyba
     # przerostem formy nad trescia
     if len(sys.argv) != 2:
-        print('Nalezy podac najwieksze n przez wiersz polecen')
+        print('Nalezy podac najwieksza potege 10 przez wiersz polecen')
         exit()
     max_arg = int(sys.argv[1])  # najwyzsza potega 10, ktora sprawdzamy
     # wyniki pomiarow dla kazdej z funkcji
