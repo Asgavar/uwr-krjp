@@ -71,11 +71,14 @@ class MicroGoogle:
             if link not in self.links:
                 self.links.append(link)
                 if rec_depth < self.depth:
-                    next_page = urllib.request.urlopen(link)
-                    threading.Thread(
-                        target=self._get_links,
-                        args=(next_page, rec_depth + 1)
-                    ).start()
+                    try:
+                        next_page = urllib.request.urlopen(link, timeout=10)
+                        threading.Thread(
+                            target=self._get_links,
+                            args=(next_page, rec_depth + 1)
+                        ).start()
+                    except Exception as e:
+                        print(f'Blad spisywania linku {link} {e}')
 
     def _search(self, url):
         """
