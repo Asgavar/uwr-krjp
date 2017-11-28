@@ -1,25 +1,41 @@
 #!/usr/bin/env python3.6
 
+import math
+
 import cairo
 import gi
-gi.require_version('Gtk', '3.0')
+gi.require_version('Gtk', '3.0')  # noqa: E402
 from gi.repository import Gtk
 
 
 class HippopyWindow(Gtk.Window):
+    """
+    Boilerplate inicjalizacji i ustawiania interfejsu.
+    """
     def on_draw_button_clicked(self, button):
-        # TODO: walidacja inputu
+        """
+        Przekazuje zadanie hipopotamowi.
+        """
         argvalue = self.argentry.get_text()
-        print(argvalue)
         opcode = self.opcodes_dropdown.get_active_text()
-        print(opcode)
-        self.opcodes[opcode](argvalue)
+        # walidacja inputu
+        if not all(d.isdigit() for d in argvalue):
+            print('Nieprawidlowy parametr!')
+            invalid_input_dialog = Gtk.MessageDialog(
+                self, 0, Gtk.MessageType.INFO, Gtk.ButtonsType.OK,
+                'Nieprawidlowy parametr!'
+            )
+            invalid_input_dialog.run()
+            invalid_input_dialog.destroy()
+            return
+        self.opcodes[opcode](float(argvalue))
 
     def __init__(self):
         Gtk.Window.__init__(self, title='Hippopy: rysujący hipopotam')
+        self.set_resizable(False)
         self.hippo = Hippo()
         self.drawingarea = Gtk.DrawingArea()
-        self.drawingarea.set_size_request(850, 850)
+        self.drawingarea.set_size_request(900, 900)
         self.drawingarea.connect('draw', self.hippo.draw)
         self.opcodes_dropdown = Gtk.ComboBoxText()
         self.argentry = Gtk.Entry()
@@ -44,6 +60,7 @@ class HippopyWindow(Gtk.Window):
         draw_button.connect('clicked', self.on_draw_button_clicked)
         for opc in self.opcodes:
             self.opcodes_dropdown.append(opc, opc)
+        self.opcodes_dropdown.set_active(0)
         opcode_arg_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=15)
         opcode_arg_hbox.pack_end(draw_button, False, False, 0)
         opcode_arg_hbox.pack_end(self.argentry, False, False, 0)
@@ -57,54 +74,78 @@ class HippopyWindow(Gtk.Window):
 
 class Hippo:
     def __init__(self):
-        self.position = (0, 0)
+        self.x = 450  # 900/2 = srodek plotna
+        self.y = 450
         self.angle = 0
         self.pen_active = True
-        self.surface = cairo.SolidPattern(0, 0, 0)
+        self.draw_instructions = []  # lista krotek zawierajacych dwie krotki
 
     def draw(self, drawingarea, context):
         """
-        'Baza' do rysowania. Zwraca instancje cairo.Context, za pomoca ktorej
-        odbywa sie rysowanie.
+        Callback przy kazdym wywolaniu wykonujacy instrukcje rysowania
+        zawarte w liscie self.draw_instructions.
         """
-        # context.set_source_rgb(0.7, 0.2, 0)
-        context.set_source(self.surface)
-        # ctx.set_line_width(9)
-        # ctx.translate(300, 300)
-        # ctx.fill()
-        x, y, x1, y1 = 0.1, 0.5, 0.4, 0.9
-        x2, y2, x3, y3 = 0.6, 0.1, 0.9, 0.5
-        context.scale(850, 850)
-        context.set_line_width(0.001)
-        context.move_to(x, y)
-        context.curve_to(x1, y1, x2, y2, x3, y3)
-        context.stroke()
-        context.set_source_rgba(1, 0.2, 0.2, 0.6)
-        context.set_line_width(0.02)
-        context.move_to(x, y)
-        context.line_to(x1, y1)
-        context.move_to(x2, y2)
-        context.line_to(x3, y3)
-        context.stroke()
-        return context
+        context.set_line_width(2)
+        context.set_line_cap(cairo.LINE_CAP_ROUND)
+        context.set_source_rgb(1, 0, 0)  # czerwony
+        for instruction in self.draw_instructions:
+            context.move_to(*(instruction[0]))  # startpoint
+            context.line_to(*(instruction[1]))  # destination
+            context.close_path()
+            context.stroke()
 
     def _forward(self, dist):
+        """
+        Ruch odbywa sie poprzez stworzenie 'instrukcji ruchu' - dwoch punktow,
+        docelowo polaczonych linia i dopisanie jej do listy instrukcji
+        wykonywanych przy kazdym rysowaniu okna.
+        """
         print(f'ide do przodu o {dist}')
+        startpoint = (self.x, self.y)
+        angle_in_radians = math.radians(self.angle)
+        dest_x = self.x + dist * math.cos(angle_in_radians)
+        dest_y = self.y + dist * math.sin(angle_in_radians)
+        destination = (dest_x, dest_y)
+        # jesli pedzel jest podniesiony, hipopotam po prostu sie przesuwa
+        if self.pen_active:
+            self.draw_instructions.append((startpoint, destination))
+        self.x = dest_x
+        self.y = dest_y
 
     def _backward(self, dist):
         print(f'ide w tyl o {dist}')
+        startpoint = (self.x, self.y)
+        angle_in_radians = math.radians(self.angle)
+        dest_x = self.x - dist * math.cos(angle_in_radians)
+        dest_y = self.y - dist * math.sin(angle_in_radians)
+        destination = (dest_x, dest_y)
+        if self.pen_active:
+            self.draw_instructions.append((startpoint, destination))
+        self.x = dest_x
+        self.y = dest_y
 
     def _right(self, deg):
-        print(f'skrecam w prawo o {deg}')
+        """
+        Sterowany przez uzytkownika hipopotam startuje z glowa skierowana
+        w prawo i odmierza katy zgodnie ze wskazowkami zegara w stosunku do
+        swojej pozycji startowej.
+        Dzieki okresowosci funkcji trygonometrycznych nie trzeba przejmowac
+        sie przekroczeniem zakresu [0, 360].
+        """
+        print(f'skrecam w prawo o {deg} stopni')
+        self.angle += deg
 
     def _left(self, deg):
-        print(f'skrecam w lewo o {deg}')
+        print(f'skrecam w lewo o {deg} stopni')
+        self.angle += 360 - deg
 
     def _penup(self, aparameterthatdoesnotmatteratall):
         print('podnosze pedzel')
+        self.pen_active = False
 
     def _pendown(self, aparameterthatdoesnotmatteratall):
         print('opuszczam pedzel')
+        self.pen_active = True
 
 
 if __name__ == '__main__':
@@ -112,5 +153,4 @@ if __name__ == '__main__':
     window.set_default_size(900, 900)
     window.connect('delete-event', Gtk.main_quit)
     window.show_all()
-    window.drawingarea.show()
     Gtk.main()
