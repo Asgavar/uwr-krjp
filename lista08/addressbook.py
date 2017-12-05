@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.6
 
+import datetime
 import sqlite3
 
 import gi
@@ -21,11 +22,13 @@ class AddressBookWindow(Gtk.Window):
         search_combo_box = Gtk.ComboBoxText()
         new_contact_button = Gtk.Button('Dodaj')
         edit_contact_button = Gtk.Button('Edytuj')
+        delete_contact_button = Gtk.Button('Usuń')
         top_hbox.pack_end(search_button, False, True, 0)
         top_hbox.pack_end(search_entry, False, True, 0)
         top_hbox.pack_end(search_combo_box, False, True, 0)
         top_hbox.pack_start(new_contact_button, False, True, 0)
         top_hbox.pack_start(edit_contact_button, False, True, 0)
+        top_hbox.pack_start(delete_contact_button, False, True, 0)
         main_vbox.pack_start(top_hbox, False, False, 0)
         # wg konwencji MVC tu chyba jest widok
         contacts_view = Gtk.TreeView(contacts_model)
@@ -44,6 +47,9 @@ class AddressBookWindow(Gtk.Window):
         edit_contact_button.connect(
             'clicked', controller.on_edit_contact_button_clicked
         )
+        delete_contact_button.connect(
+            'clicked', controller.on_delete_contact_button_clicked
+        )
         search_button.connect(
             'clicked', controller.on_search_button_clicked
         )
@@ -61,17 +67,24 @@ class ContactFormWindow(Gtk.Window):
     """
     def on_confirm_button_clicked(self, button):
         """Sprawdza, jaka była intencja i robi odpowiednią rzecz."""
-        create_contact_sql = ''
-        edit_contact_sql = ''
+        name = self.contact_name_entry.get_text()
+        phone = self.contact_phone_entry.get_text()
+        email = self.contact_email_entry.get_text()
         if self.intention == 'create':
-            print('tworzę...')
+            dao.create_contact(name, phone, email)
         elif self.intention == 'edit':
-            print('zmieniam...')
+            dao.update_contact(self.selected_id, name, phone, email)
+        self.destroy()
 
-    def __init__(self, dao, intention):
-        """Parametr intention to 'create' lub 'edit'."""
+    def __init__(self, dao, intention, id_or_noid):
+        """
+        Parametr intention to 'create' lub 'edit'.
+        Parametr id_or_noid może istnieć lub nie istnieć, zależnie od tego,
+        czy chcemy zaktualizować istniejący rekord czy tylko stworzyć nowy.
+        """
         self.dao = dao
         self.intention = intention
+        self.selected_id = id_or_noid
         Gtk.Window.__init__(self)
         main_vbox = Gtk.VBox(margin=5, spacing=5)
         contact_name_label = Gtk.Label('Imię i Nazwisko')
@@ -80,8 +93,6 @@ class ContactFormWindow(Gtk.Window):
         contact_name_entry = Gtk.Entry()
         contact_phone_entry = Gtk.Entry()
         contact_email_entry = Gtk.Entry()
-        contact_name_entry.set_max_width_chars(10)
-        contact_name_entry.set_max_length(10)
         main_vbox.pack_start(contact_name_label, False, True, 0)
         main_vbox.pack_start(contact_name_entry, False, True, 0)
         main_vbox.pack_start(contact_phone_label, False, True, 0)
@@ -89,7 +100,11 @@ class ContactFormWindow(Gtk.Window):
         main_vbox.pack_start(contact_email_label, False, True, 0)
         main_vbox.pack_start(contact_email_entry, False, True, 0)
         confirm_button = Gtk.Button('Potwierdź')
+        confirm_button.connect('clicked', self.on_confirm_button_clicked)
         main_vbox.pack_end(confirm_button, False, True, 0)
+        self.contact_name_entry = contact_name_entry
+        self.contact_phone_entry = contact_phone_entry
+        self.contact_email_entry = contact_email_entry
         self.add(main_vbox)
 
 
@@ -102,26 +117,34 @@ class AddressBookController:
         self.dao = dao
 
     def set_window(self, window):
-        """Jeden prosty trik by rozwiązać problem circular dependency."""
+        """Przerywa błędne koło zależności."""
         self.window = window
 
     def on_new_contact_button_clicked(self, button):
         """Wyświetla popupa z formularzem dodania."""
-        print('new contact button')
-        popup = ContactFormWindow(self.dao, 'create')
+        # w tym przypadku 1337 jest tożsame z 'id jest zbędne'
+        popup = ContactFormWindow(self.dao, 'create', 1337)
         popup.show_all()
 
     def on_edit_contact_button_clicked(self, button):
         """Ściąga id obecnie zaznaczonego kontaktu i odpala popupa edycji."""
-        print('edit contact button')
-        model, treeiter = self.window.selection.get_selected()
-        popup = ContactFormWindow(self.dao, 'edit')
+        selected_id = self._get_selected_id()
+        popup = ContactFormWindow(self.dao, 'edit', selected_id)
         popup.show_all()
-        print(model[treeiter][0])
+
+    def on_delete_contact_button_clicked(self, button):
+        """Za pomocą self.dao usuwa wybrany kontakt."""
+        selected_id = self._get_selected_id()
+        self.dao.delete_contact(selected_id)
 
     def on_search_button_clicked(self, button):
-        """Ściąga z ComboBoxa pole, według którego wyszukujemy."""
+        """Ściąga z ComboBoxa pole, według którego wyszukujemy i szuka."""
         print('search button')
+
+    def _get_selected_id(self):
+        """Zwraca id aktualnie zaznaczonego kontaktu."""
+        model, treeiter = self.window.selection.get_selected()
+        return model[treeiter][0]
 
 
 class DataAccess:
@@ -143,7 +166,7 @@ class DataAccess:
         self.contacts_model = Gtk.ListStore(int, str, str, str, str)
         self.cr.execute(
             '''
-            CREATE TABLE IF NOT EXISTS Contacts (
+            create table if not exists Contacts (
                 contact_id integer primary key,
                 contact_name text,
                 phone text,
@@ -153,54 +176,95 @@ class DataAccess:
             '''
         )
         self.connection.commit()
-        # FIXME
-        self.create_contact(1, 1, 1, 1)
         self.find_all_contacts()
 
-    def find_all_contacts(self):
-        """Zwraca wszystkie kontakty w bazie."""
-        self.cr.execute(
-            'SELECT * FROM Contacts;'
-        )
+    def _populate_contacts_model(self):
+        """
+        Umieszcza wyniki czekające w kursorze na liście self.contacts_model,
+        uprzednio ją czyszcząc.
+        """
+        self.contacts_model.clear()
         for contact in self.cr.fetchall():
             self.contacts_model.append(
                 # innymi słowy każde z jego pól
                 [contact[x] for x in range(len(contact))]
             )
 
+    def find_all_contacts(self):
+        """
+        Aktualizuje listę-model wpisując do niego wszystkie kontakty w bazie.
+        """
+        self.cr.execute(
+            'select * from Contacts;'
+        )
+        self._populate_contacts_model()
+
     def find_contact_by_name(self, desired_name):
-        """Zwraca kontakty zawierające desired_name w imieniu lub nazwisku."""
-        pass
+        """Szuka według imienia i nazwiska."""
+        self.cr.execute(
+            'select * from Contacts where contact_name like %?%',
+            (desired_name,)
+        )
+
+    def find_contact_by_phone(self, desired_phone):
+        """Szuka według numeru telefonu."""
+        self.cr.execute(
+            'select * from Contacts where phone like %?%',
+            (desired_phone,)
+        )
+
+    def find_contact_by_email(self, desired_email):
+        """Szuka według adresu emailowego."""
+        self.cr.execute(
+            'select * from Contacts where email like %?%',
+            (desired_email,)
+        )
 
     def update_contact(self, contact_id, contact_name, phone, email):
-        """Aktualizuje kontakt o id równym album_id."""
-        pass
+        """Aktualizuje kontakt o id równym contact_id."""
+        self.cr.execute(
+            'update Contacts set contact_name=?, phone=?, email=? where contact_id=?',
+            (contact_name, phone, email, contact_id)
+        )
+        self.connection.commit()
+        self.find_all_contacts()
 
     def delete_contact(self, contact_id):
         """Usuwa kontakt o wskazanym id."""
-        pass
+        self.cr.execute(
+            'delete from Contacts where contact_id = ?',
+            (contact_id,)
+        )
+        self.connection.commit()
+        self.find_all_contacts()
 
-    def create_contact(self, contact_id, contact_name, phone, email):
+    def create_contact(self, contact_name, phone, email):
         """
         Tworzy nowy kontakt. Jego id jest przydzielane automatycznie.
         """
-        # TODO
+        hereandnow = self._whattimeisit()
         self.cr.execute(
-            '''
-                INSERT INTO Contacts VALUES (
-                    NULL,
-                    "Wieńczysław Nieszczególny",
-                    "192-168-024",
-                    "wieniek@buziaczek.pl",
-                    "2017-12-04"
-                );
-            '''
+            'insert into Contacts values (null, ?, ?, ?, ?);',
+            (contact_name, phone, email, hereandnow)
         )
         self.connection.commit()
+        self.find_all_contacts()
 
     def mark_contact_as_viewed(self, contact_id):
-        """Zmienia czas ostatniego wyświetlenia danego kontaktu na {teraz}."""
-        pass
+        """Zmienia czas ostatniego wyświetlenia danego kontaktu na <teraz>."""
+        hereandnow = self._whattimeisit()
+        self.cr.execute(
+            'update Contacts set last_viewed ? where contact_id = ?;',
+            (hereandnow, contact_id)
+        )
+        self.connection.commit()
+        self.find_all_contacts()
+
+    def _whattimeisit(self):
+        """
+        Zwraca ładnie sformatowaną datę, np: wto 05 gru 2017 19:18:05.
+        """
+        return datetime.datetime.utcnow().strftime('%a %d %b %Y %H:%M:%S')
 
 
 if __name__ == '__main__':
@@ -211,3 +275,4 @@ if __name__ == '__main__':
     window.connect('delete-event', Gtk.main_quit)
     window.show_all()
     Gtk.main()
+    dao.connection.close()
