@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.6
 
-import datetime
 import sqlite3
 
 import gi
@@ -11,10 +10,10 @@ from gi.repository import Gtk
 class AddressBookWindow(Gtk.Window):
     """
     Deklaruje, inicjalizuje i robi różne rzeczy z interfejsem w GTK+3.
-    Otrzymuje też referencję do 'modelu' zawierającego kontakty.
+    Otrzymuje też referencję do kontrolera i modelu zawierającego kontakty.
     """
-    def __init__(self, contacts_model):
-        Gtk.Window.__init__(self, title='Musiclib')
+    def __init__(self, controller, contacts_model):
+        Gtk.Window.__init__(self, title='Książka Adresowa')
         main_vbox = Gtk.VBox(margin=5)
         top_hbox = Gtk.HBox(spacing=5)
         search_button = Gtk.Button(label='Szukaj')
@@ -38,7 +37,91 @@ class AddressBookWindow(Gtk.Window):
             col = Gtk.TreeViewColumn(column_labels[x], text_renderer, text=x)
             contacts_view.append_column(col)
         main_vbox.pack_end(contacts_view, True, True, 5)
+        # ustawianie callbacków
+        new_contact_button.connect(
+            'clicked', controller.on_new_contact_button_clicked
+        )
+        edit_contact_button.connect(
+            'clicked', controller.on_edit_contact_button_clicked
+        )
+        search_button.connect(
+            'clicked', controller.on_search_button_clicked
+        )
+        # przydadzą się później
+        self.search_entry = search_entry
+        self.search_combo_box = search_combo_box
+        self.selection = contacts_view.get_selection()
         self.add(main_vbox)
+
+
+class ContactFormWindow(Gtk.Window):
+    """
+    W zależności od parametru intention może być zarówno formularzem edycji,
+    jak i tworzenia kontaktu. Nie ma kontrolera, sam komunikuje się z dao.
+    """
+    def on_confirm_button_clicked(self, button):
+        """Sprawdza, jaka była intencja i robi odpowiednią rzecz."""
+        create_contact_sql = ''
+        edit_contact_sql = ''
+        if self.intention == 'create':
+            print('tworzę...')
+        elif self.intention == 'edit':
+            print('zmieniam...')
+
+    def __init__(self, dao, intention):
+        """Parametr intention to 'create' lub 'edit'."""
+        self.dao = dao
+        self.intention = intention
+        Gtk.Window.__init__(self)
+        main_vbox = Gtk.VBox(margin=5, spacing=5)
+        contact_name_label = Gtk.Label('Imię i Nazwisko')
+        contact_phone_label = Gtk.Label('Telefon')
+        contact_email_label = Gtk.Label('Email')
+        contact_name_entry = Gtk.Entry()
+        contact_phone_entry = Gtk.Entry()
+        contact_email_entry = Gtk.Entry()
+        contact_name_entry.set_max_width_chars(10)
+        contact_name_entry.set_max_length(10)
+        main_vbox.pack_start(contact_name_label, False, True, 0)
+        main_vbox.pack_start(contact_name_entry, False, True, 0)
+        main_vbox.pack_start(contact_phone_label, False, True, 0)
+        main_vbox.pack_start(contact_phone_entry, False, True, 0)
+        main_vbox.pack_start(contact_email_label, False, True, 0)
+        main_vbox.pack_start(contact_email_entry, False, True, 0)
+        confirm_button = Gtk.Button('Potwierdź')
+        main_vbox.pack_end(confirm_button, False, True, 0)
+        self.add(main_vbox)
+
+
+class AddressBookController:
+    """
+    Zawiera callbacki przypisane do poszczególnych elementów GUI, pośredniczy
+    między tym, co widoczne na ekranie a interfejsem do bazy.
+    """
+    def __init__(self, dao):
+        self.dao = dao
+
+    def set_window(self, window):
+        """Jeden prosty trik by rozwiązać problem circular dependency."""
+        self.window = window
+
+    def on_new_contact_button_clicked(self, button):
+        """Wyświetla popupa z formularzem dodania."""
+        print('new contact button')
+        popup = ContactFormWindow(self.dao, 'create')
+        popup.show_all()
+
+    def on_edit_contact_button_clicked(self, button):
+        """Ściąga id obecnie zaznaczonego kontaktu i odpala popupa edycji."""
+        print('edit contact button')
+        model, treeiter = self.window.selection.get_selected()
+        popup = ContactFormWindow(self.dao, 'edit')
+        popup.show_all()
+        print(model[treeiter][0])
+
+    def on_search_button_clicked(self, button):
+        """Ściąga z ComboBoxa pole, według którego wyszukujemy."""
+        print('search button')
 
 
 class DataAccess:
@@ -50,6 +133,7 @@ class DataAccess:
     def __init__(self, db_file):
         """
         Tworzenie tabeli i modelu.
+        Początkowe wypełnienie modelu danymi.
         """
         self.connection = sqlite3.connect(db_file)
         self.cr = self.connection.cursor()
@@ -69,11 +153,14 @@ class DataAccess:
             '''
         )
         self.connection.commit()
+        # FIXME
+        self.create_contact(1, 1, 1, 1)
+        self.find_all_contacts()
 
     def find_all_contacts(self):
         """Zwraca wszystkie kontakty w bazie."""
         self.cr.execute(
-            'SELECT * FROM Users;'
+            'SELECT * FROM Contacts;'
         )
         for contact in self.cr.fetchall():
             self.contacts_model.append(
@@ -101,10 +188,11 @@ class DataAccess:
         self.cr.execute(
             '''
                 INSERT INTO Contacts VALUES (
-                "Wieńczysław Nieszczególny",
-                "192-168-024",
-                "wieniek@buziaczek.pl",
-                "2017-12-04"
+                    NULL,
+                    "Wieńczysław Nieszczególny",
+                    "192-168-024",
+                    "wieniek@buziaczek.pl",
+                    "2017-12-04"
                 );
             '''
         )
@@ -116,8 +204,10 @@ class DataAccess:
 
 
 if __name__ == '__main__':
-    dao = DataAccess(':memory:')
-    window = AddressBookWindow(dao.contacts_model)
+    dao = DataAccess('adresy_test.db')
+    controller = AddressBookController(dao)
+    window = AddressBookWindow(controller, dao.contacts_model)
+    controller.set_window(window)
     window.connect('delete-event', Gtk.main_quit)
     window.show_all()
     Gtk.main()
