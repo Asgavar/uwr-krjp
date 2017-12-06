@@ -30,24 +30,25 @@ class AddressBookWindow(Gtk.Window):
         top_hbox.pack_start(edit_contact_button, False, True, 0)
         top_hbox.pack_start(delete_contact_button, False, True, 0)
         main_vbox.pack_start(top_hbox, False, False, 0)
-        # wg konwencji MVC tu chyba jest widok
         contacts_view = Gtk.TreeView(contacts_model)
         text_renderer = Gtk.CellRendererText()
         column_labels = [
             'ID', 'Imię i Nazwisko', 'Telefon', 'Email', 'Ostatnio wyświetlony'
         ]
-        for x in range(len(column_labels)):
-            col = Gtk.TreeViewColumn(column_labels[x], text_renderer, text=x)
-            contacts_view.append_column(col)
-        main_vbox.pack_end(contacts_view, True, True, 5)
         search_options = [
             'imię i nazwisko', 'email', 'telefon'
         ]
+        main_vbox.pack_end(contacts_view, True, True, 5)
+        for x in range(len(column_labels)):
+            col = Gtk.TreeViewColumn(column_labels[x], text_renderer, text=x)
+            contacts_view.append_column(col)
         for x in range(len(search_options)):
             search_combo_box.append_text(search_options[x])
         # 0 -> imię i nazwisko
         search_combo_box.set_active(0)
-        # ustawianie callbacków
+        contacts_view.get_selection().connect(
+            'changed', controller.on_contact_viewed
+        )
         new_contact_button.connect(
             'clicked', controller.on_new_contact_button_clicked
         )
@@ -155,9 +156,23 @@ class AddressBookController:
         search_input = self.window.search_entry.get_text()
         find_options[selected](search_input)
 
+    def on_contact_viewed(self, selection):
+        """
+        Proxy przekazujący id obejrzanego kontaktu.
+        Niestety, podłączenie się do sygnału 'changed' wysyłanego przez
+        TreeSelection okazało się nie działać, ponieważ po jakiejkolwiek
+        zmianie w rekordach (również aktualizacji daty) zaczyna on zwracać
+        zupełnie niewłaściwe id w nieprzewidywalny (?) sposób.
+        """
+        selected_id = self._get_selected_id()
+        print(selected_id)
+        # self.dao.mark_contact_as_viewed(self._get_selected_id())
+
     def _get_selected_id(self):
         """Zwraca id aktualnie zaznaczonego kontaktu."""
         model, treeiter = self.window.selection.get_selected()
+        if treeiter is None:
+            return 'poszedł NoneType'
         return model[treeiter][0]
 
 
@@ -275,7 +290,7 @@ class DataAccess:
         """Zmienia czas ostatniego wyświetlenia danego kontaktu na <teraz>."""
         hereandnow = self._whattimeisit()
         self.cr.execute(
-            'update Contacts set last_viewed ? where contact_id = ?;',
+            'update Contacts set last_viewed = ? where contact_id = ?;',
             (hereandnow, contact_id)
         )
         self.connection.commit()
