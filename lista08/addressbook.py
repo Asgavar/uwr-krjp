@@ -40,6 +40,13 @@ class AddressBookWindow(Gtk.Window):
             col = Gtk.TreeViewColumn(column_labels[x], text_renderer, text=x)
             contacts_view.append_column(col)
         main_vbox.pack_end(contacts_view, True, True, 5)
+        search_options = [
+            'imię i nazwisko', 'email', 'telefon'
+        ]
+        for x in range(len(search_options)):
+            search_combo_box.append_text(search_options[x])
+        # 0 -> imię i nazwisko
+        search_combo_box.set_active(0)
         # ustawianie callbacków
         new_contact_button.connect(
             'clicked', controller.on_new_contact_button_clicked
@@ -139,7 +146,14 @@ class AddressBookController:
 
     def on_search_button_clicked(self, button):
         """Ściąga z ComboBoxa pole, według którego wyszukujemy i szuka."""
-        print('search button')
+        find_options = {
+            'imię i nazwisko': self.dao.find_contact_by_name,
+            'email': self.dao.find_contact_by_email,
+            'telefon': self.dao.find_contact_by_phone
+        }
+        selected = self.window.search_combo_box.get_active_text()
+        search_input = self.window.search_entry.get_text()
+        find_options[selected](search_input)
 
     def _get_selected_id(self):
         """Zwraca id aktualnie zaznaczonego kontaktu."""
@@ -190,6 +204,10 @@ class DataAccess:
                 [contact[x] for x in range(len(contact))]
             )
 
+    def _wildcard(self, parameter):
+        """SQLite'owa składnia wildcardów."""
+        return '%' + parameter + '%'
+
     def find_all_contacts(self):
         """
         Aktualizuje listę-model wpisując do niego wszystkie kontakty w bazie.
@@ -202,23 +220,26 @@ class DataAccess:
     def find_contact_by_name(self, desired_name):
         """Szuka według imienia i nazwiska."""
         self.cr.execute(
-            'select * from Contacts where contact_name like %?%',
-            (desired_name,)
+            'select * from Contacts where contact_name like ?',
+            (self._wildcard(desired_name),)
         )
+        self._populate_contacts_model()
 
     def find_contact_by_phone(self, desired_phone):
         """Szuka według numeru telefonu."""
         self.cr.execute(
-            'select * from Contacts where phone like %?%',
-            (desired_phone,)
+            'select * from Contacts where phone like ?',
+            (self._wildcard(desired_phone),)
         )
+        self._populate_contacts_model()
 
     def find_contact_by_email(self, desired_email):
         """Szuka według adresu emailowego."""
         self.cr.execute(
-            'select * from Contacts where email like %?%',
-            (desired_email,)
+            'select * from Contacts where email like ?',
+            (self._wildcard(desired_email),)
         )
+        self._populate_contacts_model()
 
     def update_contact(self, contact_id, contact_name, phone, email):
         """Aktualizuje kontakt o id równym contact_id."""
