@@ -1,0 +1,215 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pl">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>addressbook module &#8212; addressbook  - dokumentacja</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/translations.js"></script>
+    <link rel="index" title="Indeks" href="genindex.html" />
+    <link rel="search" title="Szukaj" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-addressbook">
+<span id="addressbook-module"></span><h1>addressbook module<a class="headerlink" href="#module-addressbook" title="Stały odnośnik do tego nagłówka">¶</a></h1>
+<dl class="class">
+<dt id="addressbook.AddressBookController">
+<em class="property">class </em><code class="descclassname">addressbook.</code><code class="descname">AddressBookController</code><span class="sig-paren">(</span><em>dao</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Klasy bazowe: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Zawiera callbacki przypisane do poszczególnych elementów GUI, pośredniczy
+między tym, co widoczne na ekranie a interfejsem do bazy.</p>
+<dl class="method">
+<dt id="addressbook.AddressBookController.on_contact_viewed">
+<code class="descname">on_contact_viewed</code><span class="sig-paren">(</span><em>selection</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.on_contact_viewed" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Proxy przekazujący id obejrzanego kontaktu.
+Niestety, podłączenie się do sygnału «changed» wysyłanego przez
+TreeSelection okazało się nie działać, ponieważ po jakiejkolwiek
+zmianie w rekordach (również aktualizacji daty) zaczyna on zwracać
+zupełnie niewłaściwe id w nieprzewidywalny (?) sposób.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.AddressBookController.on_delete_contact_button_clicked">
+<code class="descname">on_delete_contact_button_clicked</code><span class="sig-paren">(</span><em>button</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.on_delete_contact_button_clicked" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Za pomocą self.dao usuwa wybrany kontakt.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.AddressBookController.on_edit_contact_button_clicked">
+<code class="descname">on_edit_contact_button_clicked</code><span class="sig-paren">(</span><em>button</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.on_edit_contact_button_clicked" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Ściąga id obecnie zaznaczonego kontaktu i odpala popupa edycji.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.AddressBookController.on_new_contact_button_clicked">
+<code class="descname">on_new_contact_button_clicked</code><span class="sig-paren">(</span><em>button</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.on_new_contact_button_clicked" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Wyświetla popupa z formularzem dodania.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.AddressBookController.on_search_button_clicked">
+<code class="descname">on_search_button_clicked</code><span class="sig-paren">(</span><em>button</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.on_search_button_clicked" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Ściąga z ComboBoxa pole, według którego wyszukujemy i szuka.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.AddressBookController.set_window">
+<code class="descname">set_window</code><span class="sig-paren">(</span><em>window</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookController.set_window" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Przerywa błędne koło zależności.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="addressbook.AddressBookWindow">
+<em class="property">class </em><code class="descclassname">addressbook.</code><code class="descname">AddressBookWindow</code><span class="sig-paren">(</span><em>controller</em>, <em>contacts_model</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.AddressBookWindow" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Klasy bazowe: <code class="xref py py-class docutils literal"><span class="pre">gi.overrides.Gtk.Window</span></code></p>
+<p>Deklaruje, inicjalizuje i robi różne rzeczy z interfejsem w GTK+3.
+Otrzymuje też referencję do kontrolera i modelu zawierającego kontakty.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="addressbook.ContactFormWindow">
+<em class="property">class </em><code class="descclassname">addressbook.</code><code class="descname">ContactFormWindow</code><span class="sig-paren">(</span><em>dao</em>, <em>intention</em>, <em>id_or_noid</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.ContactFormWindow" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Klasy bazowe: <code class="xref py py-class docutils literal"><span class="pre">gi.overrides.Gtk.Window</span></code></p>
+<p>W zależności od parametru intention może być zarówno formularzem edycji,
+jak i tworzenia kontaktu. Nie ma kontrolera, sam komunikuje się z dao.</p>
+<dl class="method">
+<dt id="addressbook.ContactFormWindow.on_confirm_button_clicked">
+<code class="descname">on_confirm_button_clicked</code><span class="sig-paren">(</span><em>button</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.ContactFormWindow.on_confirm_button_clicked" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Sprawdza, jaka była intencja i robi odpowiednią rzecz.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="addressbook.DataAccess">
+<em class="property">class </em><code class="descclassname">addressbook.</code><code class="descname">DataAccess</code><span class="sig-paren">(</span><em>db_file</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Klasy bazowe: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Interfejs między SQLite a aplikacją, mapuje swoje metody na wyrażenia SQL.
+Wszelkie zapytania do bazy w istocie modyfikują contacts_model,
+który jest wyświetlany na bieżąco przez AddressBookWindow.</p>
+<dl class="method">
+<dt id="addressbook.DataAccess.create_contact">
+<code class="descname">create_contact</code><span class="sig-paren">(</span><em>contact_name</em>, <em>phone</em>, <em>email</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.create_contact" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Tworzy nowy kontakt. Jego id jest przydzielane automatycznie.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.delete_contact">
+<code class="descname">delete_contact</code><span class="sig-paren">(</span><em>contact_id</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.delete_contact" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Usuwa kontakt o wskazanym id.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.find_all_contacts">
+<code class="descname">find_all_contacts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.find_all_contacts" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Aktualizuje listę-model wpisując do niego wszystkie kontakty w bazie.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.find_contact_by_email">
+<code class="descname">find_contact_by_email</code><span class="sig-paren">(</span><em>desired_email</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.find_contact_by_email" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Szuka według adresu emailowego.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.find_contact_by_name">
+<code class="descname">find_contact_by_name</code><span class="sig-paren">(</span><em>desired_name</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.find_contact_by_name" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Szuka według imienia i nazwiska.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.find_contact_by_phone">
+<code class="descname">find_contact_by_phone</code><span class="sig-paren">(</span><em>desired_phone</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.find_contact_by_phone" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Szuka według numeru telefonu.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.mark_contact_as_viewed">
+<code class="descname">mark_contact_as_viewed</code><span class="sig-paren">(</span><em>contact_id</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.mark_contact_as_viewed" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Zmienia czas ostatniego wyświetlenia danego kontaktu na &lt;teraz&gt;.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="addressbook.DataAccess.update_contact">
+<code class="descname">update_contact</code><span class="sig-paren">(</span><em>contact_id</em>, <em>contact_name</em>, <em>phone</em>, <em>email</em><span class="sig-paren">)</span><a class="headerlink" href="#addressbook.DataAccess.update_contact" title="Stały odnośnik do tej definicji">¶</a></dt>
+<dd><p>Aktualizuje kontakt o id równym contact_id.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Szybkie wyszukiwanie</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Szukaj" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Artur Juraszek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/addressbook.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
