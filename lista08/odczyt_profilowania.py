@@ -1,5 +1,8 @@
 #!/usr/bin/env python3.6
 
+"""
+Pomocniczy skrypt parsujący i wyświetlający log profilera.
+"""
 import pstats
 
 if __name__ == '__main__':
