@@ -33,12 +33,13 @@ class MessageReceiver:
         """
         routing = {
             REQ_TYPES.NEW: self.create_new,
+            REQ_TYPES.UPDATE: self.update_contact,
             REQ_TYPES.DELETE: self.delete_by_id,
             REQ_TYPES.BY_NAME: self.get_by_name,
             REQ_TYPES.BY_PHONE: self.get_by_phone,
             REQ_TYPES.BY_EMAIL: self.get_by_email,
         }
-        routing[req_type](req_body)
+        return routing[req_type](req_body)
 
     def listen_loop(self):
         while True:
@@ -48,8 +49,24 @@ class MessageReceiver:
             req_type, req_body = self._split_payload(data)
             print(f'req_type: {req_type}')
             print(f'req_body: {req_body}')
-            self._process(int(req_type), req_body)
+            response = self._process(int(req_type), req_body)
+            conn.send(response)
             conn.close()
+
+    def _dump_from_cursor_to_protobuf(self):
+        """
+        Zwraca aktualną zawartość kursora jako zserializowany ContactEntryList.
+        """
+        contact_list = addressbook_pb2.ContactEntryList()
+        for record in dba.cr.fetchall():
+            print(record)
+            contact = contact_list.contact.add()
+            contact.id = record[0]
+            contact.name = record[1]
+            contact.phone = record[2]
+            contact.email = record[3]
+            contact.last_viewed = record[4]
+        return contact_list.SerializeToString()
 
     def create_new(self, request):
         msg = addressbook_pb2.ContactEntry()
@@ -59,11 +76,19 @@ class MessageReceiver:
         new_email = msg.email
         last_viewed = msg.last_viewed
         self.dba.create_contact(new_name, new_phone, new_email, last_viewed)
+        return b''
+
+    def update_contact(self, request):
+        msg = addressbook_pb2.ContactEntry()
+        msg.ParseFromString(request)
+        self.dba.update_contact(msg.id, msg.name, msg.phone, msg.email)
+        return b''
 
     def delete_by_id(self, request):
         msg = addressbook_pb2.ContactName()
         msg.ParseFromString(request)
         self.dba.delete_contact(msg.id)
+        return b''
 
     def get_by_name(self, request):
         print(request)
@@ -71,18 +96,20 @@ class MessageReceiver:
         msg.ParseFromString(request)
         desired_name = msg.name
         dba.find_contact_by_name(desired_name)
-        for entry in dba.cr.fetchall():
-            print(entry)
+        response = self._dump_from_cursor_to_protobuf()
+        return response
 
     def get_by_phone(self, request):
         msg = addressbook_pb2.ContactPhone()
         msg.ParseFromString(request)
         print(msg.phone)
+        return b''
 
     def get_by_email(self, request):
         msg = addressbook_pb2.ContactEmail()
         msg.ParseFromString(request)
         print(msg.email)
+        return b''
 
 
 class DatabaseAccess:

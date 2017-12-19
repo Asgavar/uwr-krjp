@@ -2,7 +2,6 @@
 
 import datetime
 import socket
-import sqlite3
 
 import gi
 gi.require_version('Gtk', '3.0')  # noqa: E402
@@ -213,14 +212,26 @@ class MessageSender:
         return data
 
     def _fill_response_objects(self, server_response):
+        """
+        Deserializacja i wrzucenie ContactEntry'ów do self.response_objects.
+        """
         print(server_response)
+        cont_entr_list = addressbook_pb2.ContactEntryList()
+        cont_entr_list.ParseFromString(server_response)
+        print(cont_entr_list)
+        self.response_objects.clear()
+        for cont_entr in cont_entr_list.contact:
+            self.response_objects.append(cont_entr)
 
     def _populate_contacts_model(self):
+        """
+        Odczytanie wartości ContactEntry'ów w self.response_objects i
+        wypełnienie złożonymi z nich krotkami Gtk.ListStore'a.
+        """
         self.contacts_model.clear()
-        for contact in self.response_objects:
+        for c in self.response_objects:
             self.contacts_model.append(
-                # innymi słowy każde z jego pól
-                [contact[x] for x in range(len(contact))]
+                [c.id, c.name, c.phone, c.email, c.last_viewed]
             )
 
     def find_all_contacts(self):
@@ -240,6 +251,7 @@ class MessageSender:
         req_message = addressbook_pb2.ContactPhone()
         req_message.phone = desired_phone
         response = self._send_to_server(REQ_TYPES.BY_PHONE, req_message.SerializeToString())
+        self._fill_response_objects(response)
         self._populate_contacts_model()
 
     def find_contact_by_email(self, desired_email):
@@ -247,10 +259,18 @@ class MessageSender:
         req_message = addressbook_pb2.ContactEmail()
         req_message.email = desired_email
         response = self._send_to_server(REQ_TYPES.BY_EMAIL, req_message.SerializeToString())
+        self._fill_response_objects(response)
         self._populate_contacts_model()
 
     def update_contact(self, contact_id, contact_name, phone, email):
         """Aktualizuje kontakt o id równym contact_id."""
+        req_message = addressbook_pb2.ContactEntry()
+        req_message.id = contact_id
+        req_message.name = contact_name
+        req_message.phone = phone
+        req_message.email = email
+        req_message.last_viewed = ''  # w sumie nie ma tu większego znaczenia
+        self._send_to_server(REQ_TYPES.UPDATE, req_message.SerializeToString())
         self.find_all_contacts()
 
     def delete_contact(self, contact_id):
@@ -269,16 +289,6 @@ class MessageSender:
         req_message.last_viewed = hereandnow
         self._send_to_server(REQ_TYPES.NEW, req_message.SerializeToString())
         self.find_all_contacts()
-
-    # def mark_contact_as_viewed(self, contact_id):
-    #     """Zmienia czas ostatniego wyświetlenia danego kontaktu na <teraz>."""
-    #     hereandnow = self._whattimeisit()
-    #     self.cr.execute(
-    #         'update Contacts set last_viewed = ? where contact_id = ?;',
-    #         (hereandnow, contact_id)
-    #     )
-    #     self.connection.commit()
-    #     self.find_all_contacts()
 
     def _whattimeisit(self):
         """
