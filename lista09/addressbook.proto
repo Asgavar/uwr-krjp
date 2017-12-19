@@ -1,0 +1,31 @@
+syntax = "proto2";
+
+package addressbook;
+
+message ContactEntry {
+    optional int32 id = 1;
+    required string name = 2;
+    required string phone = 3;
+    required string email = 4;
+    required string last_viewed = 5;
+}
+
+message ContactID {
+    required int32 id = 1;
+}
+
+message ContactName {
+    required string name = 1;
+}
+
+message ContactPhone {
+    required string phone = 1;
+}
+
+message ContactEmail {
+    required string email = 1;
+}
+
+message ContactEntryList {
+    repeated ContactEntry contact = 1;
+}
