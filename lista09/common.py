@@ -3,8 +3,8 @@ PORT = 9000
 
 class REQ_TYPES:
     NEW = 0
-    UPDATE = 9  # doszedł póżniej
+    UPDATE = 1  # doszedł póżniej
     DELETE = 2
-    BY_NAME = 2
-    BY_PHONE = 3
-    BY_EMAIL = 4
+    BY_NAME = 3
+    BY_PHONE = 4
+    BY_EMAIL = 5
