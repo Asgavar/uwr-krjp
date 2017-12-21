@@ -83,9 +83,10 @@ class ContactFormWindow(Gtk.Window):
         phone = self.contact_phone_entry.get_text().encode()
         email = self.contact_email_entry.get_text().encode()
         if self.intention == 'create':
-            dao.create_contact(name, phone, email)
+            self.dao.create_contact(name, phone, email)
         elif self.intention == 'edit':
-            dao.update_contact(self.selected_id, name, phone, email)
+            print('EDIT')
+            self.dao.update_contact(self.selected_id, name, phone, email)
         self.destroy()
 
     def __init__(self, dao, intention, id_or_noid):
@@ -182,9 +183,7 @@ class AddressBookController:
 
 class MessageSender:
     """
-    Interfejs między SQLite a aplikacją, mapuje swoje metody na wyrażenia SQL.
-    Wszelkie zapytania do bazy w istocie modyfikują contacts_model,
-    który jest wyświetlany na bieżąco przez AddressBookWindow.
+    Wysyła requesty, na które po drugiej stronie czeka MessageReceiver.
     """
     def __init__(self, host, port):
         self.host = host
@@ -194,12 +193,15 @@ class MessageSender:
         self.find_all_contacts()
 
     def _send_to_server(self, req_type, request):
+        """
+        Przyjmuje protobufa, serializuje go i wysyła.
+        """
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.connect((self.host, self.port))
-        payload = str(req_type).encode() + request
+        payload = str(req_type).encode() + request.SerializeToString()
         self.sock.send(payload)
-        # jeśli dodajemy lub kasujemy, odpowiedź nas nie interesuje
+        # odpowiedź nie zawsze nas interesuje
         if req_type not in (
             REQ_TYPES.BY_NAME,
             REQ_TYPES.BY_PHONE,
@@ -239,55 +241,50 @@ class MessageSender:
         self._populate_contacts_model()
 
     def find_contact_by_name(self, desired_name):
-        """Szuka według imienia i nazwiska."""
         req_message = addressbook_pb2.ContactName()
         req_message.name = desired_name
-        response = self._send_to_server(REQ_TYPES.BY_NAME, req_message.SerializeToString())
+        response = self._send_to_server(REQ_TYPES.BY_NAME, req_message)
         self._fill_response_objects(response)
         self._populate_contacts_model()
 
     def find_contact_by_phone(self, desired_phone):
-        """Szuka według numeru telefonu."""
         req_message = addressbook_pb2.ContactPhone()
         req_message.phone = desired_phone
-        response = self._send_to_server(REQ_TYPES.BY_PHONE, req_message.SerializeToString())
+        response = self._send_to_server(REQ_TYPES.BY_PHONE, req_message)
         self._fill_response_objects(response)
         self._populate_contacts_model()
 
     def find_contact_by_email(self, desired_email):
-        """Szuka według adresu emailowego."""
         req_message = addressbook_pb2.ContactEmail()
         req_message.email = desired_email
-        response = self._send_to_server(REQ_TYPES.BY_EMAIL, req_message.SerializeToString())
+        response = self._send_to_server(REQ_TYPES.BY_EMAIL, req_message)
         self._fill_response_objects(response)
         self._populate_contacts_model()
 
     def update_contact(self, contact_id, contact_name, phone, email):
-        """Aktualizuje kontakt o id równym contact_id."""
         req_message = addressbook_pb2.ContactEntry()
         req_message.id = contact_id
         req_message.name = contact_name
         req_message.phone = phone
         req_message.email = email
         req_message.last_viewed = ''  # w sumie nie ma tu większego znaczenia
-        self._send_to_server(REQ_TYPES.UPDATE, req_message.SerializeToString())
+        self._send_to_server(REQ_TYPES.UPDATE, req_message)
         self.find_all_contacts()
 
     def delete_contact(self, contact_id):
-        """Usuwa kontakt o wskazanym id."""
+        req_message = addressbook_pb2.ContactID()
+        req_message.id = contact_id
+        self._send_to_server(REQ_TYPES.DELETE, req_message)
         self.find_all_contacts()
 
     def create_contact(self, contact_name, phone, email):
-        """
-        Tworzy nowy kontakt. Jego id jest przydzielane automatycznie.
-        """
         hereandnow = self._whattimeisit()
         req_message = addressbook_pb2.ContactEntry()
         req_message.name = contact_name
         req_message.phone = phone
         req_message.email = email
         req_message.last_viewed = hereandnow
-        self._send_to_server(REQ_TYPES.NEW, req_message.SerializeToString())
+        self._send_to_server(REQ_TYPES.NEW, req_message)
         self.find_all_contacts()
 
     def _whattimeisit(self):
@@ -298,9 +295,9 @@ class MessageSender:
 
 
 if __name__ == '__main__':
-    dao = MessageSender(common.HOST, common.PORT)
-    controller = AddressBookController(dao)
-    window = AddressBookWindow(controller, dao.contacts_model)
+    sender = MessageSender(common.HOST, common.PORT)
+    controller = AddressBookController(sender)
+    window = AddressBookWindow(controller, sender.contacts_model)
     controller.set_window(window)
     window.connect('delete-event', Gtk.main_quit)
     window.show_all()

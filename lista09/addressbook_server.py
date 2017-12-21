@@ -85,7 +85,7 @@ class MessageReceiver:
         return b''
 
     def delete_by_id(self, request):
-        msg = addressbook_pb2.ContactName()
+        msg = addressbook_pb2.ContactID()
         msg.ParseFromString(request)
         self.dba.delete_contact(msg.id)
         return b''
