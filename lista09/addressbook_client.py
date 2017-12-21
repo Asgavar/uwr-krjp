@@ -85,7 +85,6 @@ class ContactFormWindow(Gtk.Window):
         if self.intention == 'create':
             self.dao.create_contact(name, phone, email)
         elif self.intention == 'edit':
-            print('EDIT')
             self.dao.update_contact(self.selected_id, name, phone, email)
         self.destroy()
 
@@ -169,9 +168,9 @@ class AddressBookController:
         zmianie w rekordach (również aktualizacji daty) zaczyna on zwracać
         zupełnie niewłaściwe id w nieprzewidywalny (?) sposób.
         """
-        selected_id = self._get_selected_id()
-        print(selected_id)
+        # selected_id = self._get_selected_id()
         # self.dao.mark_contact_as_viewed(self._get_selected_id())
+        pass
 
     def _get_selected_id(self):
         """Zwraca id aktualnie zaznaczonego kontaktu."""
@@ -217,10 +216,8 @@ class MessageSender:
         """
         Deserializacja i wrzucenie ContactEntry'ów do self.response_objects.
         """
-        print(server_response)
         cont_entr_list = addressbook_pb2.ContactEntryList()
         cont_entr_list.ParseFromString(server_response)
-        print(cont_entr_list)
         self.response_objects.clear()
         for cont_entr in cont_entr_list.contact:
             self.response_objects.append(cont_entr)

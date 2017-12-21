@@ -4,16 +4,14 @@ import socket
 import sqlite3
 
 import addressbook_pb2
+import common
 from common import REQ_TYPES
 
 
 class MessageReceiver:
     """
-    Nasłuchuje na sockecie i czeka na wiadomości. W zależności od typu
-    wiadomości którą otrzymał, podejmuje następujące działania:
-        ContactEntry <-> Dodaje go do bazy
-        ContactID <-> Usuwa z bazy kontakt o danym id
-        ContactName, ContactPhone, ContactEmail <-> odsyła wynik wyszukiwania
+    Nasłuchuje na sockecie i czeka na wiadomości. W zależności od nagłówka
+    (liczby na jednym bajcie) podejmuje odpowiednie działanie.
     """
     def __init__(self, dba, sock):
         self.dba = dba
@@ -29,7 +27,7 @@ class MessageReceiver:
 
     def _process(self, req_type, req_body):
         """
-        Przetwarza request i zwraca coś co należy odesłać z powrotem.
+        Przetwarza request i zwraca (lub nie) coś co należy odesłać z powrotem.
         """
         routing = {
             REQ_TYPES.NEW: self.create_new,
@@ -45,10 +43,10 @@ class MessageReceiver:
         while True:
             conn, addr = self.sock.accept()
             data = conn.recv(4096)  # załóżmy, że tyle wystarczy
-            print(data)
+            # print(data)
             req_type, req_body = self._split_payload(data)
-            print(f'req_type: {req_type}')
-            print(f'req_body: {req_body}')
+            # print(f'req_type: {req_type}')
+            # print(f'req_body: {req_body}')
             response = self._process(int(req_type), req_body)
             conn.send(response)
             conn.close()
@@ -59,7 +57,7 @@ class MessageReceiver:
         """
         contact_list = addressbook_pb2.ContactEntryList()
         for record in dba.cr.fetchall():
-            print(record)
+            # print(record)
             contact = contact_list.contact.add()
             contact.id = record[0]
             contact.name = record[1]
@@ -76,40 +74,37 @@ class MessageReceiver:
         new_email = msg.email
         last_viewed = msg.last_viewed
         self.dba.create_contact(new_name, new_phone, new_email, last_viewed)
-        return b''
+        return b'utworzono nowy'
 
     def update_contact(self, request):
         msg = addressbook_pb2.ContactEntry()
         msg.ParseFromString(request)
         self.dba.update_contact(msg.id, msg.name, msg.phone, msg.email)
-        return b''
+        return b'zaktualizowano'
 
     def delete_by_id(self, request):
         msg = addressbook_pb2.ContactID()
         msg.ParseFromString(request)
         self.dba.delete_contact(msg.id)
-        return b''
+        return b'usunieto'
 
     def get_by_name(self, request):
-        print(request)
         msg = addressbook_pb2.ContactName()
         msg.ParseFromString(request)
-        desired_name = msg.name
-        dba.find_contact_by_name(desired_name)
-        response = self._dump_from_cursor_to_protobuf()
-        return response
+        self.dba.find_contact_by_name(msg.name)
+        return self._dump_from_cursor_to_protobuf()
 
     def get_by_phone(self, request):
         msg = addressbook_pb2.ContactPhone()
         msg.ParseFromString(request)
-        print(msg.phone)
-        return b''
+        self.dba.find_contact_by_phone(msg.phone)
+        return self._dump_from_cursor_to_protobuf()
 
     def get_by_email(self, request):
         msg = addressbook_pb2.ContactEmail()
         msg.ParseFromString(request)
-        print(msg.email)
-        return b''
+        self.dba.find_contact_by_email(msg.email)
+        return self._dump_from_cursor_to_protobuf()
 
 
 class DatabaseAccess:
@@ -184,7 +179,6 @@ class DatabaseAccess:
         """
         Tworzy nowy kontakt. Jego id jest przydzielane automatycznie.
         """
-        # hereandnow = self._whattimeisit()
         self.cr.execute(
             'insert into Contacts values (null, ?, ?, ?, ?);',
             (contact_name, phone, email, last_viewed)
@@ -195,9 +189,8 @@ class DatabaseAccess:
 if __name__ == '__main__':
     dba = DatabaseAccess('addressbook.db')
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # recykling socketu
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('127.0.0.1', 9000))
+    s.bind((common.HOST, common.PORT))
     s.listen()
     receiver = MessageReceiver(dba, s)
     receiver.listen_loop()
